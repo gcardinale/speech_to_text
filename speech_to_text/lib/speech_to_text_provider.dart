@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
@@ -6,6 +7,8 @@ import 'package:speech_to_text/speech_recognition_event.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:speech_to_text_platform_interface/speech_to_text_platform_interface.dart';
+import 'package:flutter_sound/flutter_sound.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// Simplifies interaction with [SpeechToText] by handling all the callbacks and notifying
 /// listeners as events happen.
@@ -31,12 +34,17 @@ class SpeechToTextProvider extends ChangeNotifier {
   double _lastLevel = 0;
   List<LocaleName> _locales = [];
   LocaleName? _systemLocale;
+  FlutterSoundRecorder? _audioRecorder;
+  late String _filePath;
+  bool _isRecording = false;
 
   /// Only construct one instance in an application.
   ///
   /// Do not call `initialize` on the [SpeechToText] that is passed as a parameter, instead
   /// call the [initialize] method on this class.
-  SpeechToTextProvider(this._speechToText);
+  SpeechToTextProvider(this._speechToText){
+    _audioRecorder = FlutterSoundRecorder();
+  }
 
   Stream<SpeechRecognitionEvent> get stream => _recognitionController.stream;
 
@@ -162,6 +170,7 @@ class SpeechToTextProvider extends ChangeNotifier {
           localeId: localeId,
           listenMode: listenMode);
     }
+    _startRecordingAudio();
   }
 
   /// Stops a current active listening session.
@@ -170,6 +179,7 @@ class SpeechToTextProvider extends ChangeNotifier {
   /// and return the current result as final.
   void stop() {
     _speechToText.stop();
+    _stopRecordingAudio();
     notifyListeners();
   }
 
@@ -179,7 +189,40 @@ class SpeechToTextProvider extends ChangeNotifier {
   /// and ignore any results recognized so far.
   void cancel() {
     _speechToText.cancel();
+    _stopRecordingAudio();
     notifyListeners();
+  }
+
+  void _startRecordingAudio() async {
+    if (!_isRecording) {
+      await _requestPermissions();
+      Directory appDocumentsDirectory = await getApplicationDocumentsDirectory();
+      _filePath = '${appDocumentsDirectory.path}/recording.wav';
+      //await _audioRecorder!.openAudioSession();
+      await _audioRecorder!.startRecorder(
+        toFile: _filePath,
+        codec: Codec.pcm16WAV,
+      );
+      _isRecording = true;
+    }
+  }
+
+  void _stopRecordingAudio() async {
+    if (_isRecording) {
+      await _audioRecorder!.stopRecorder();
+      //await _audioRecorder!.closeAudioSession();
+      _isRecording = false;
+      _isRecording = false;
+    }
+  }
+
+  Future<void> _requestPermissions() async {
+    // Gestisci qui le richieste di permessi se necessario
+    // Esempio utilizzando permission_handler:
+    // var status = await Permission.microphone.request();
+    // if (status != PermissionStatus.granted) {
+    //   throw RecordingPermissionException('Permission not granted');
+    // }
   }
 
   void _onError(SpeechRecognitionError errorNotification) {
