@@ -40,6 +40,10 @@ import org.json.JSONObject
 import java.util.*
 import java.util.concurrent.Executors
 
+//Added for audio recording
+import android.media.MediaRecorder
+import java.io.File
+import java.io.IOException
 
 enum class SpeechToTextErrors {
     multipleRequests,
@@ -119,6 +123,34 @@ public class SpeechToTextPlugin :
     private var maxRms: Float = -100.0F
     private val handler: Handler = Handler(Looper.getMainLooper())
     private val defaultLanguageTag: String = Locale.getDefault().toLanguageTag()
+
+    //Added for audio recording
+    private var mediaRecorder: MediaRecorder? = null
+    private val audioFileName = "audio_record.3gp"
+
+    private fun startAudioRecording() {
+        mediaRecorder = MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
+            val filePath = pluginContext?.getExternalFilesDir(null)?.absolutePath + File.separator + audioFileName
+            setOutputFile(filePath)
+            try {
+                prepare()
+                start()
+            } catch (e: IOException) {
+                Log.e(logTag, "startAudioRecording: prepare() failed")
+            }
+        }
+    }
+
+    private fun stopAndReleaseRecorder() {
+        mediaRecorder?.apply {
+            stop()
+            release()
+        }
+        mediaRecorder = null
+    }
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
 
@@ -304,6 +336,10 @@ public class SpeechToTextPlugin :
         }
         speechStartTime = System.currentTimeMillis()
         notifyListening(isRecording = true)
+
+        //Added for audio recording
+        startAudioRecording()
+
         result.success(true)
         debugLog("Start listening done")
     }
@@ -341,6 +377,10 @@ public class SpeechToTextPlugin :
             destroyRecognizer()
         }
         notifyListening(isRecording = false)
+
+        //Added for audio recording
+        stopAndReleaseRecorder()
+
         result.success(true)
         debugLog("Stop listening done")
     }
@@ -360,6 +400,10 @@ public class SpeechToTextPlugin :
             destroyRecognizer()
         }
         notifyListening(isRecording = false)
+
+        //Added for audio recording
+        stopAndReleaseRecorder()
+
         result.success(true)
         debugLog("Cancel listening done")
     }
