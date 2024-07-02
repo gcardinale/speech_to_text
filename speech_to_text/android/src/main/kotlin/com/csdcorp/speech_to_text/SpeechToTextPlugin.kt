@@ -44,6 +44,8 @@ import java.util.concurrent.Executors
 import android.media.MediaRecorder
 import java.io.File
 import java.io.IOException
+import android.os.Environment
+
 
 enum class SpeechToTextErrors {
     multipleRequests,
@@ -126,14 +128,15 @@ public class SpeechToTextPlugin :
 
     //Added for audio recording
     private var mediaRecorder: MediaRecorder? = null
-    private val audioFileName = "audio_record.3gp"
+    private val audioFileName = "recording.3gp"
 
     private fun startAudioRecording() {
         mediaRecorder = MediaRecorder().apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
             setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
-            val filePath = pluginContext?.getExternalFilesDir(null)?.absolutePath + File.separator + audioFileName
+            val documentsPath = pluginContext?.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)?.absolutePath
+            val filePath = "$documentsPath${File.separator}$audioFileName"
             setOutputFile(filePath)
             try {
                 prepare()
